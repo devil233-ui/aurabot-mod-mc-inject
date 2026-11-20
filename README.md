@@ -19,9 +19,9 @@ Aurabot（DSH 的 QQ 插件 `dsh-aurabot-qq`）的「记忆库召回（MC）」�
 | `maxChars` | `600` | 塞进上下文的上限，超出截断 |
 | `timeoutMs` | `1500` | 查不到就当没有 |
 | `cacheSeconds` | `60` | 同一句话的缓存时间 |
-| `tool` | `true` | 是否注册 `recall_memory` 工具 |
+| `tool` | `false` | 是否注册 `recall_memory` 工具；默认关，避免与 memory 模块的合并版重名 |
 
-**线上当前 `tool: false`**：合并召回（MC + 本地库、去重、带来源标注）由 [`aurabot-mod-memory`](https://github.com/devil233-ui/aurabot-mod-memory) 提供，本模块只保留每轮注入。
+**默认就是 `tool: false`**：合并召回（MC + 本地库、去重、带来源标注）由 [`aurabot-mod-memory`](https://github.com/devil233-ui/aurabot-mod-memory) 提供，本模块只保留每轮注入。
 
 ## 接口契约
 
@@ -60,5 +60,6 @@ MC 的记忆是从**逐条消息**长出来的：Scribe 只提取「最小完整
 
 ## 版本
 
-- `v0.1.1`：新增 `tool` 开关（默认 `true`），用于把 `recall_memory` 让给 memory 模块的合并版。
+- `v0.1.2`：`tool` 默认改为 `false`——宿主重载会把模块默认值写回配置，默认 true 会让开关每次重载后被重置。
+- `v0.1.1`：新增 `tool` 开关，用于把 `recall_memory` 让给 memory 模块的合并版。
 - `v0.1.0`：初版（每轮注入 + `recall_memory` 直查 MC）。
