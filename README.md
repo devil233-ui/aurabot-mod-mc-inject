@@ -1,6 +1,6 @@
 # aurobot-mod-mc-recall
 
-Aurabot（DSH 的 QQ 插件 `dsh-aurabot-qq`）的「记忆库召回（MC）」模块：每轮把 [MemoryConstellations](https://github.com/devil233-ui/memory-constellations) 的召回结果注入 `prompt`，**只读、不写库**。
+Aurabot（DSH 的 QQ 插件 `dsh-aurabot-qq`）的「记忆库召回（MC）」模块：每轮把 [MemoryConstellations](https://github.com/devil233-ui/MemoryConstellations) 的召回结果注入 `prompt`，**只读、不写库**。
 
 ## 它做什么
 
@@ -21,7 +21,7 @@ Aurabot（DSH 的 QQ 插件 `dsh-aurabot-qq`）的「记忆库召回（MC）」�
 | `cacheSeconds` | `60` | 同一句话的缓存时间 |
 | `tool` | `false` | 是否注册 `recall_memory` 工具；默认关，避免与 memory 模块的合并版重名 |
 
-**默认就是 `tool: false`**：合并召回（MC + 本地库、去重、带来源标注）由 [`aurabot-mod-memory`](https://github.com/devil233-ui/aurabot-mod-memory) 提供，本模块只保留每轮注入。
+**默认就是 `tool: false`**：合并召回（MC + 本地库、去重、带来源标注）由 [`aurabot-mod-memory`](https://github.com/devil233-ui/aurabot-mod-memory) 提供，本模块只负责每轮注入。
 
 ## 接口契约
 
@@ -44,7 +44,7 @@ resp: {"success": true, "count": 3, "formatted": "【记忆库检索结果】\n.
 
 **重名会静默失效**：两个模块都注册 `recall_memory` 时，宿主的日志是 `[debug] [modules] 工具 recall_memory 重名，模块「memory」的没挂` —— 谁先注册谁留下，后者直接不挂，且只有 debug 级日志。这就是本模块加 `tool` 开关的原因。
 
-## 为什么还留着 MC
+## 为什么事实与态度交给 MC
 
 MC 的记忆是从**逐条消息**长出来的：Scribe 只提取「最小完整语义观察 + 主体 + 逐字引文 + 消息 ID/指纹」，`claim_review_a` 与 `claim_review_b` 两个独立审查在同一 revision 上一致才发布成 Claim，再按 duty 分类进 Profile（Facts/Status/Judgment 各自可回滚），任一校验不符就 fail-closed。本地库是对话级抽取、直接写入，没有引文与审核，擅长的是口吻、称呼、关系亲疏这类印象层。
 
