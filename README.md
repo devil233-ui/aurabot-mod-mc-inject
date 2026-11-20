@@ -1,4 +1,4 @@
-# aurobot-mod-mc-recall
+# aurabot-mod-mc-recall
 
 Aurabot（DSH 的 QQ 插件 `dsh-aurabot-qq`）的「记忆库召回（MC）」模块：每轮把 [MemoryConstellations](https://github.com/devil233-ui/MemoryConstellations) 的召回结果注入 `prompt`，**只读、不写库**。
 
