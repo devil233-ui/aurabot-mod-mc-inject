@@ -62,7 +62,7 @@ resp: {"success": true, ...}
 
 - 每 `ingestMinutes` 分钟全扫一遍 chatlog 目录（实测 23 个文件 1.2 万条，0.46 秒），靠进度文件跳过已同步。**不区分增量和全量**：全扫本身就够快，两套逻辑反而容易漏。
 - 进度存模块数据目录的 `ingest-state.json`，按会话键记最后一条已同步的时间戳。
-- 会话映射三层叠加：内置三条 → `ingestMap` 显式指定 → 读 MC 的 `chats` 表自动认（`QQ 群 123456789` → `group:123456789`、`QQ 私聊 987654321` → `private:987654321`）。以后 MC 里新建群，这里不用改。
+- 会话映射两层：`ingestMap` 显式指定 → 读 MC 的 `chats` 表自动认（`QQ 群 123456789` → `group:123456789`、`QQ 私聊 987654321` → `private:987654321`）。以后 MC 里新建群，这里不用改。
 - 每次最多写 `ingestBatch` 条就落盘退出，剩下的下一轮继续，避免首次补历史时长时间占住定时器。
 
 两个坑：
@@ -98,7 +98,7 @@ MC 的记忆是从**逐条消息**长出来的：Scribe 只提取「最小完整
 
 ## 版本
 
-- `v0.3.0`：**接管回填**——把独立脚本 `aura-to-mc.js` 的活收进模块（`api.every` + `ingest-state.json`），会话映射改成「内置 + 手填 + 读 MC 会话表自动认」，新增 `ingest`/`ingestMinutes`/`ingestBatch`/`chatlogDir`/`ingestDb`/`ingestMap` 六个配置。默认仍是关，切换时先停旧定时器再打开，否则两边会重复入库。
+- `v0.3.0`：**接管回填**——把独立脚本 `aura-to-mc.js` 的活收进模块（`api.every` + `ingest-state.json`），会话映射改成「手填 + 读 MC 会话表自动认」，新增 `ingest`/`ingestMinutes`/`ingestBatch`/`chatlogDir`/`ingestDb`/`ingestMap` 六个配置。默认仍是关，切换时先停旧定时器再打开，否则两边会重复入库。
 - `v0.2.0`：**改名**——模块 id、目录、仓库统一从 `mc-recall` 换成 `mc-inject`。`recall` 是 MC 库那边的检索动词，这个模块做的是宿主每轮的投递，挂调用方的动词容易读错。配置键随之变成 `ext['mc-inject']`，旧键 `ext['mc-recall']` 不再被读取。顺带把 `minChars` 的说明改成中性表述——原来那句按默认 6 写死「在吗」这类不触发，值调小后就不成立了。
 - `v0.1.2`：`tool` 默认改为 `false`——宿主重载会把模块默认值写回配置，默认 true 会让开关每次重载后被重置。
 - `v0.1.1`：新增 `tool` 开关，用于把 `recall_memory` 让给 memory 模块的合并版。
