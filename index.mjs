@@ -10,10 +10,10 @@ const MC_URL = 'http://127.0.0.1:3100/api/recall'
 
 export default {
   id: 'mc-recall',
-  name: '记忆库召回（MC）',
+  name: '每轮记忆注入（MC）',
   version: '0.1.2',
   api: 1,
-  description: '每轮从 MemoryConstellations 里捞相关记忆，塞进这一轮的上下文（只进对话，不进会话历史）。',
+  description: '每轮自动从 MemoryConstellations 召回相关记忆，塞进这一轮的上下文（只进对话，不进会话历史）。',
   defaults: {
     enabled: true,
     limit: 6,
