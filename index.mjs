@@ -9,9 +9,9 @@
 const MC_URL = 'http://127.0.0.1:3100/api/recall'
 
 export default {
-  id: 'mc-recall',
+  id: 'mc-inject',
   name: '每轮记忆注入（MC）',
-  version: '0.1.2',
+  version: '0.2.0',
   api: 1,
   description: '每轮自动从 MemoryConstellations 召回相关记忆，塞进这一轮的上下文（只进对话，不进会话历史）。',
   defaults: {
@@ -26,7 +26,7 @@ export default {
   settings: [
     { key: 'enabled', label: '启用召回', type: 'boolean', hint: '关掉后每轮不再查记忆库，行为回到普通对话' },
     { key: 'limit', label: '最多几条', type: 'number', hint: 'MC 单次召回上限 20' },
-    { key: 'minChars', label: '太短的话不查', type: 'number', hint: '「在吗」「哈哈」这类不触发，省一次请求' },
+    { key: 'minChars', label: '太短的话不查', type: 'number', hint: '短于这个字数的句子不查，省一次请求' },
     { key: 'maxChars', label: '塞进上下文最多多少字', type: 'number', hint: '超出截断，防止一段记忆把上下文撑满' },
     { key: 'timeoutMs', label: '超时（毫秒）', type: 'number', hint: '查不到就当没有，不耽误回复' },
     { key: 'cacheSeconds', label: '同一句话缓存秒数', type: 'number', hint: '防止同一句被追问时重复请求' },
@@ -90,7 +90,7 @@ export default {
 
     // 合并召回（MC + 本地库）由 memory 模块提供；这里默认不再注册同名工具，
     // 否则同名工具会被宿主判为重名而丢弃（日志：工具 recall_memory 重名）。
-    // 想回到「只查 MC」的老行为：把 ext['mc-recall'].tool 设回 true，并关掉 memory 的合并工具。
+    // 想回到「只查 MC」的老行为：把 ext['mc-inject'].tool 设回 true，并关掉 memory 的合并工具。
     if (api.settings()?.tool !== false) api.tool(() => [
       api.defineTool({
         name: 'recall_memory',

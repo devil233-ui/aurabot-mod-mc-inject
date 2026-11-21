@@ -1,4 +1,4 @@
-# aurabot-mod-mc-recall
+# aurabot-mod-mc-inject
 
 Aurabot（DSH 的 QQ 插件 `dsh-aurabot-qq`）的「每轮记忆注入（MC）」模块：默认每一轮都自动向 [MemoryConstellations](https://github.com/devil233-ui/MemoryConstellations) 召回一次相关记忆并注入 `prompt`，**只读、不写库**。这里的「召回」指检索那一步（`POST /api/recall`），「注入」指投递那一步；整个过程不需要模型主动调用。
 
@@ -9,13 +9,13 @@ Aurabot（DSH 的 QQ 插件 `dsh-aurabot-qq`）的「每轮记忆注入（MC）�
 - 注入文本受 `maxChars` 限制（默认 600 字）；超时/查不到一律当「没有」，不阻塞回复。
 - 另注册一条 `api.rule()`：提醒模型这段旧记忆可能过时，和眼前聊天冲突时以聊天为准，别照抄原话。
 
-## 配置（`config.json` 的 `ext['mc-recall']`）
+## 配置（`config.json` 的 `ext['mc-inject']`）
 
 | 键 | 默认 | 说明 |
 |---|---|---|
 | `enabled` | `true` | 关掉后每轮不再查记忆库 |
 | `limit` | `6` | 单次召回条数，MC 上限 20 |
-| `minChars` | `6` | 用户这句话太短（「在吗」「哈哈」）就不查，省一次请求 |
+| `minChars` | `6` | 短于这个字数的句子不查，省一次请求 |
 | `maxChars` | `600` | 塞进上下文的上限，超出截断 |
 | `timeoutMs` | `1500` | 查不到就当没有 |
 | `cacheSeconds` | `60` | 同一句话的缓存时间 |
@@ -53,13 +53,14 @@ MC 的记忆是从**逐条消息**长出来的：Scribe 只提取「最小完整
 ## 安装
 
 ```
-/root/.dsh/plugins-data/aurabot/modules/mc-recall/index.mjs
+/root/.dsh/plugins-data/aurabot/modules/mc-inject/index.mjs
 ```
 
-改文件后宿主会自己热重载（日志 `模块「mc-recall」文件改了，重新加载`），不需要重启宿主。
+改文件后宿主会自己热重载（日志 `模块「mc-inject」文件改了，重新加载`），不需要重启宿主。
 
 ## 版本
 
+- `v0.2.0`：**改名**——模块 id、目录、仓库统一从 `mc-recall` 换成 `mc-inject`。`recall` 是 MC 库那边的检索动词，这个模块做的是宿主每轮的投递，挂调用方的动词容易读错。配置键随之变成 `ext['mc-inject']`，旧键 `ext['mc-recall']` 不再被读取。顺带把 `minChars` 的说明改成中性表述——原来那句按默认 6 写死「在吗」这类不触发，值调小后就不成立了。
 - `v0.1.2`：`tool` 默认改为 `false`——宿主重载会把模块默认值写回配置，默认 true 会让开关每次重载后被重置。
 - `v0.1.1`：新增 `tool` 开关，用于把 `recall_memory` 让给 memory 模块的合并版。
 - `v0.1.0`：初版（每轮注入 + `recall_memory` 直查 MC）。
