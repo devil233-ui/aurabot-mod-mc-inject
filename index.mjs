@@ -8,7 +8,7 @@
 // 会话写坏：message must have role "user"）。检索走 MC 自己的出站接口
 // POST /api/recall（只读），返回它格式化好的文本。
 
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const MC_BASE = 'http://127.0.0.1:3100'
@@ -19,6 +19,35 @@ const MC_MESSAGES = MC_BASE + '/api/messages'
 const CHATLOG_DIR = '/root/.dsh/plugins-data/aurabot/chatlog'
 // MC 的库文件：读它的 chats 表，把「QQ 群 123」自动认成 group:123
 const MC_DB = '/opt/memory-constellations/sanctuary.db'
+
+// 面板下拉的候选：模块加载时探一次（热重载会重探），探不到就只剩默认项
+function detectChatlogDirs() {
+  const out = []
+  try {
+    for (const d of readdirSync('/root/.dsh/plugins-data')) {
+      const p = join('/root/.dsh/plugins-data', d, 'chatlog')
+      if (p === CHATLOG_DIR) continue
+      try { if (statSync(p).isDirectory()) out.push({ value: p, label: p }) } catch { /* 不是目录 */ }
+    }
+  } catch { /* 连 plugins-data 都没有就只留默认项 */ }
+  return out
+}
+
+function detectMcDbs() {
+  const out = []
+  try {
+    for (const d of readdirSync('/opt')) {
+      const p = join('/opt', d, 'sanctuary.db')
+      if (p === MC_DB) continue
+      try { if (statSync(p).isFile()) out.push({ value: p, label: p }) } catch { /* 不是文件 */ }
+    }
+  } catch { /* 同上 */ }
+  return out
+}
+
+// 面板存下来的布尔可能是 true / 'true' / 1，统一归一化再过判断
+const isOn = (v) => v === true || v === 'true' || v === 1 || v === '1'
+const isOff = (v) => v === false || v === 'false' || v === 0 || v === '0'
 
 const pad = (x) => String(x).padStart(2, '0')
 
@@ -78,26 +107,44 @@ export default {
     ingestMap: '',
   },
   settings: [
-    { key: 'enabled', label: '启用召回', type: 'boolean', hint: '关掉后每轮不再查记忆库，行为回到普通对话' },
-    { key: 'limit', label: '最多几条', type: 'number', hint: 'MC 单次召回上限 20' },
-    { key: 'minChars', label: '太短的话不查', type: 'number', hint: '短于这个字数的句子不查，省一次请求' },
-    { key: 'maxChars', label: '塞进上下文最多多少字', type: 'number', hint: '超出截断，防止一段记忆把上下文撑满' },
-    { key: 'timeoutMs', label: '超时（毫秒）', type: 'number', hint: '查不到就当没有，不耽误回复' },
-    { key: 'cacheSeconds', label: '同一句话缓存秒数', type: 'number', hint: '防止同一句被追问时重复请求' },
-    { key: 'tool', label: '注册 recall_memory 工具', type: 'boolean', hint: '关掉后只做每轮注入；合并召回（MC+本地）由 memory 模块提供，两个模块同名工具会被宿主判重名而丢弃后者' },
-    { key: 'ingest', label: '回填聊天记录到记忆库', type: 'boolean', hint: '接管原来独立脚本 aura-to-mc 的活。开了它就该停掉那个脚本的定时器，否则两边各写各的进度会重复入库' },
-    { key: 'ingestMinutes', label: '回填间隔（分钟）', type: 'number', hint: '默认 5 分钟一次；改了要重载模块才生效' },
-    { key: 'ingestBatch', label: '每轮最多回填条数', type: 'number', hint: '首次开启要补历史时靠它分批，免得一次卡太久；默认 500' },
-    { key: 'chatlogDir', label: 'chatlog 目录', type: 'string', hint: '留空用 aurabot 默认目录' },
-    { key: 'ingestDb', label: 'MC 数据库路径', type: 'string', hint: '用来读会话表自动认群；留空用默认路径，填 - 表示关闭自动枚举' },
-    { key: 'ingestMap', label: '会话映射（JSON）', type: 'string', hint: '形如 {"group:123":103}，补自动枚举认不出的会话；显式映射优先' },
+    { key: 'enabled', label: '启用召回', type: 'switch', hint: '关掉后每轮不再查记忆库，行为回到普通对话' },
+    { key: 'limit', label: '最多几条', type: 'number', min: 1, max: 20, step: 1, hint: 'MC 单次召回上限 20' },
+    { key: 'minChars', label: '太短的话不查', type: 'number', min: 1, max: 50, step: 1, hint: '短于这个字数的句子不查，省一次请求' },
+    { key: 'maxChars', label: '塞进上下文最多多少字', type: 'number', min: 100, max: 4000, step: 100, hint: '超出截断，防止一段记忆把上下文撑满' },
+    { key: 'timeoutMs', label: '超时（毫秒）', type: 'number', min: 200, max: 10000, step: 100, hint: '查不到就当没有，不耽误回复' },
+    { key: 'cacheSeconds', label: '同一句话缓存秒数', type: 'number', min: 0, max: 3600, step: 10, hint: '防止同一句被追问时重复请求' },
+    { key: 'tool', label: '注册 recall_memory 工具', type: 'switch', hint: '关掉后只做每轮注入；合并召回（MC+本地）由 memory 模块提供，两个模块同名工具会被宿主判重名而丢弃后者' },
+    { key: 'ingest', label: '回填聊天记录到记忆库', type: 'switch', hint: '接管原来独立脚本 aura-to-mc 的活。开了它就该停掉那个脚本的定时器，否则两边各写各的进度会重复入库' },
+    { key: 'ingestMinutes', label: '回填间隔', type: 'select', options: [
+      { value: 1, label: '1 分钟' },
+      { value: 5, label: '5 分钟（默认）' },
+      { value: 15, label: '15 分钟' },
+      { value: 30, label: '30 分钟' },
+      { value: 60, label: '1 小时' },
+    ], hint: '改了要重载模块才生效' },
+    { key: 'ingestBatch', label: '每轮最多回填条数', type: 'select', options: [
+      { value: 100, label: '100 条（最轻）' },
+      { value: 500, label: '500 条（默认）' },
+      { value: 2000, label: '2000 条（补历史快些）' },
+      { value: 5000, label: '5000 条（一口气补完）' },
+    ], hint: '首次开启要补历史时靠它分批，免得一次卡太久' },
+    { key: 'chatlogDir', label: 'chatlog 目录', type: 'select', options: [
+      { value: '', label: '默认（' + CHATLOG_DIR + '）' },
+      ...detectChatlogDirs(),
+    ], hint: '只有同时装了别的 aurabot 实例才需要换' },
+    { key: 'ingestDb', label: 'MC 数据库', type: 'select', options: [
+      { value: '', label: '默认（' + MC_DB + '）' },
+      { value: '-', label: '关闭自动认群' },
+      ...detectMcDbs(),
+    ], hint: '读它的会话表，把「QQ 群 xxx」自动认成 group:xxx；关掉就只能手填映射' },
+    { key: 'ingestMap', label: '额外会话映射', type: 'textarea', placeholder: '{"group:123456": 103}', hint: '自动认群认不出来的才需要填，一般留空' },
   ],
   setup(api) {
     const cache = new Map() // query → { at, text }
 
     const recall = async (query) => {
       const cfg = { ...api.defaults, ...(api.settings() || {}) }
-      if (!cfg.enabled) return ''
+      if (!isOn(cfg.enabled)) return ''
       const q = String(query || '').trim()
       if (q.length < Number(cfg.minChars || 6)) return ''
       const hit = cache.get(q)
@@ -151,7 +198,7 @@ export default {
     // 合并召回（MC + 本地库）由 memory 模块提供；这里默认不再注册同名工具，
     // 否则同名工具会被宿主判为重名而丢弃（日志：工具 recall_memory 重名）。
     // 想回到「只查 MC」的老行为：把 ext['mc-inject'].tool 设回 true，并关掉 memory 的合并工具。
-    if (api.settings()?.tool !== false) api.tool(() => [
+    if (!isOff(api.settings()?.tool)) api.tool(() => [
       api.defineTool({
         name: 'recall_memory',
         description: '想不起来某件事时，主动去记忆库里搜一下（比如「上次他说想要什么」「那部片子叫什么」）。返回的是旧记忆原文，可能不准。',
@@ -233,7 +280,7 @@ export default {
 
     const syncOnce = async () => {
       const cfg = { ...api.defaults, ...(api.settings() || {}) }
-      if (!cfg.ingest) return null
+      if (!isOn(cfg.ingest)) return null
       if (!stateFile) { api.log.warn?.('拿不到模块数据目录，回填跳过'); return null }
       const dir = String(cfg.chatlogDir || '').trim() || CHATLOG_DIR
       let files = []
